@@ -6,9 +6,11 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -197,4 +199,102 @@ func HandleZengoboxApps(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, map[string]interface{}{"apps": apps})
+}
+
+// statusPayload converts a Manager status into the frontend's shape.
+func statusPayload(st zengobox.CoreStatus) map[string]interface{} {
+	mode := st.EffectiveMode
+	if mode == "" {
+		mode = "tproxy"
+	}
+	return map[string]interface{}{
+		"running":        st.Running,
+		"pid":            st.PID,
+		"core":           st.Core,
+		"mode":           mode,
+		"effective_mode": mode,
+		"needs_setup":    st.NeedsSetup,
+		"crashed":        st.Crashed,
+	}
+}
+
+// HandleZengoboxStart launches the proxy core under Manager supervision
+// (POST only). On missing core binary it reports needs_setup so the
+// frontend shows the setup wizard instead of a generic error.
+func HandleZengoboxStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	mgr := zengobox.GetManager()
+	if err := mgr.Start(); err != nil {
+		if errors.Is(err, zengobox.ErrNeedsSetup) {
+			writeJSON(w, map[string]interface{}{
+				"success": false, "needs_setup": true, "error": err.Error(),
+			})
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "start failed: "+err.Error())
+		return
+	}
+	writeJSON(w, map[string]interface{}{"success": true, "status": statusPayload(mgr.Status())})
+}
+
+// HandleZengoboxStop terminates the core and cleans netfilter state.
+func HandleZengoboxStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	mgr := zengobox.GetManager()
+	if err := mgr.Stop(); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "stop failed: "+err.Error())
+		return
+	}
+	writeJSON(w, map[string]interface{}{"success": true, "status": statusPayload(mgr.Status())})
+}
+
+// HandleZengoboxRestart is Stop followed by Start.
+func HandleZengoboxRestart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	mgr := zengobox.GetManager()
+	if err := mgr.Restart(); err != nil {
+		if errors.Is(err, zengobox.ErrNeedsSetup) {
+			writeJSON(w, map[string]interface{}{
+				"success": false, "needs_setup": true, "error": err.Error(),
+			})
+			return
+		}
+		writeJSONError(w, http.StatusInternalServerError, "restart failed: "+err.Error())
+		return
+	}
+	writeJSON(w, map[string]interface{}{"success": true, "status": statusPayload(mgr.Status())})
+}
+
+// maxLogLines bounds the /api/zengobox/logs response (frontend polls it).
+const maxLogLines = 200
+
+// HandleZengoboxLogs returns the tail of the core log file.
+func HandleZengoboxLogs(w http.ResponseWriter, r *http.Request) {
+	cfg, err := zengobox.GetConfig()
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, "failed to load config: "+err.Error())
+		return
+	}
+	logs := []string{}
+	if data, err := os.ReadFile(filepath.Join(cfg.EffectiveRunDir(), "core.log")); err == nil {
+		lines := strings.Split(string(data), "\n")
+		if len(lines) > maxLogLines {
+			lines = lines[len(lines)-maxLogLines:]
+		}
+		for _, l := range lines {
+			if strings.TrimSpace(l) != "" {
+				logs = append(logs, l)
+			}
+		}
+	}
+	writeJSON(w, map[string]interface{}{"logs": logs})
 }
