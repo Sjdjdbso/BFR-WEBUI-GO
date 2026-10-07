@@ -1,206 +1,148 @@
 {{define "sidebar.html"}}
-    <!-- Navigation Tabs (Desktop Category Dropdowns) -->
-    <template x-if="authenticated">
-        <nav class="hidden md:flex items-center space-x-1 bg-black/90 p-1.5 rounded-xl border border-border/80 shadow-lg">
-            <!-- 📊 Status Category -->
-            <div class="relative" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" @click.outside="open = false">
-                <button type="button" @click="open = !open"
-                    :class="['overview', 'sysinfo', 'logs'].includes(activeTab) ? 'bg-blue-600/20 text-blue-400 border-blue-500/40 shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/5 border-transparent'"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border select-none">
-                    <span>📊 Status</span>
-                    <svg class="w-3 h-3 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-                <div x-show="open"
-                    x-transition:enter="transition ease-out duration-150"
-                    x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
-                    x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-100"
-                    x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
-                    class="absolute left-0 mt-1.5 w-48 rounded-xl bg-card border border-border/80 shadow-2xl p-1 z-[110] backdrop-blur-xl space-y-0.5"
-                    style="display: none;">
-                    <button type="button" @click="activeTab = 'overview'; open = false"
-                        :class="activeTab === 'overview' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>Overview</span>
-                        <span x-show="activeTab === 'overview'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'sysinfo'; open = false"
-                        :class="activeTab === 'sysinfo' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>System Info</span>
-                        <span x-show="activeTab === 'sysinfo'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'logs'; fetchLogs(); open = false"
-                        :class="activeTab === 'logs' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>System Logs</span>
-                        <span x-show="activeTab === 'logs'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                </div>
-            </div>
+<template x-if="authenticated">
+    <!-- Desktop: fixed left sidebar (AWDOS style) -->
+    <div class="hidden lg:block shrink-0">
+        <aside class="sticky top-0 h-screen w-72 flex flex-col bg-[#161617]/70 backdrop-blur-2xl border-r border-white/5 shadow-2xl">
+            {{template "sidebar-nav.html" .}}
+        </aside>
+    </div>
+    <!-- Mobile: slide-in drawer -->
+    <div id="bfr-mobile-drawer" class="fixed inset-y-0 left-0 z-[95] w-72 max-w-[85vw] lg:hidden -translate-x-full transition-transform duration-300 ease-out">
+        <aside class="h-full flex flex-col bg-[#161617]/95 backdrop-blur-3xl border-r border-white/10 shadow-2xl">
+            {{template "sidebar-nav.html" .}}
+        </aside>
+    </div>
+    <!-- Drawer overlay -->
+    <div id="bfr-drawer-overlay" class="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm hidden lg:hidden" onclick="toggleBfrDrawer()"></div>
+</template>
+<script>
+/* Sidebar drawer controls (AWDOS pattern, UI-only, no app logic touched) */
+function toggleBfrDrawer() {
+    var d = document.getElementById('bfr-mobile-drawer');
+    var o = document.getElementById('bfr-drawer-overlay');
+    if (!d || !o) return;
+    var opening = d.classList.contains('-translate-x-full');
+    d.classList.toggle('-translate-x-full', !opening);
+    o.classList.toggle('hidden', !opening);
+    document.body.classList.toggle('overflow-hidden', opening);
+}
+function bfrCloseDrawer() {
+    var d = document.getElementById('bfr-mobile-drawer');
+    var o = document.getElementById('bfr-drawer-overlay');
+    if (d) d.classList.add('-translate-x-full');
+    if (o) o.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+</script>
+{{end}}
 
-            <!-- ⚙️ System Category -->
-            <div class="relative" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" @click.outside="open = false">
-                <button type="button" @click="open = !open"
-                    :class="['files', 'terminal', 'tools'].includes(activeTab) ? 'bg-blue-600/20 text-blue-400 border-blue-500/40 shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/5 border-transparent'"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border select-none">
-                    <span>⚙️ System</span>
-                    <svg class="w-3 h-3 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
-                </button>
-                <div x-show="open"
-                    x-transition:enter="transition ease-out duration-150"
-                    x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
-                    x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-100"
-                    x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
-                    class="absolute left-0 mt-1.5 w-52 rounded-xl bg-card border border-border/80 shadow-2xl p-1 z-[110] backdrop-blur-xl space-y-0.5"
-                    style="display: none;">
-                    <button type="button" @click="activeTab = 'files'; fetchFileList(currentPath); open = false"
-                        :class="activeTab === 'files' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>File Manager</span>
-                        <span x-show="activeTab === 'files'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'terminal'; initTerminal(); open = false"
-                        :class="activeTab === 'terminal' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>Web Terminal</span>
-                        <span x-show="activeTab === 'terminal'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'tools'; open = false"
-                        :class="activeTab === 'tools' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>System Tools & Modules</span>
-                        <span x-show="activeTab === 'tools'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                </div>
+{{define "sidebar-nav.html"}}
+    <!-- Brand -->
+    <div class="px-6 pt-6 pb-4 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-orange-500/30 shrink-0">B</div>
+            <div class="min-w-0">
+                <h1 class="font-extrabold text-lg leading-none tracking-tight text-white">BFR <span class="font-medium text-gray-400">WEBUI</span></h1>
+                <p class="text-[11px] text-gray-500 mt-1 truncate max-w-[180px]" x-text="stats.model ? stats.model + ' (Android ' + stats.android_ver + ')' : 'Android System WebUI'"></p>
             </div>
-
-            <!-- 🛠️ Services Category -->
-            <div class="relative" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" @click.outside="open = false">
-                <button type="button" @click="open = !open"
-                    :class="['tools', 'scrcpy'].includes(activeTab) ? 'bg-blue-600/20 text-blue-400 border-blue-500/40 shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/5 border-transparent'"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border select-none">
-                    <span>🛠️ Services</span>
-                    <svg class="w-3 h-3 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
+        </div>
+    </div>
+    <!-- Nav -->
+    <nav class="flex-1 px-4 py-2 space-y-5 overflow-y-auto overflow-x-hidden">
+        <!-- Main -->
+        <div>
+            <div class="space-y-0.5">
+                <button type="button" @click="activeTab = 'overview'; bfrCloseDrawer()"
+                    :class="activeTab === 'overview' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">🖥️</span><span class="flex-1 text-left">Overview</span>
                 </button>
-                <div x-show="open"
-                    x-transition:enter="transition ease-out duration-150"
-                    x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
-                    x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-100"
-                    x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
-                    class="absolute left-0 mt-1.5 w-48 rounded-xl bg-card border border-border/80 shadow-2xl p-1 z-[110] backdrop-blur-xl space-y-0.5"
-                    style="display: none;">
-                    <button type="button" @click="activeTab = 'tools'; open = false"
-                        :class="activeTab === 'tools' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>Telegram Bot</span>
-                        <span x-show="activeTab === 'tools'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'tools'; open = false"
-                        :class="activeTab === 'tools' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>Smart Charger</span>
-                        <span x-show="activeTab === 'tools'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'tools'; open = false"
-                        :class="activeTab === 'tools' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>SSH Daemon</span>
-                        <span x-show="activeTab === 'tools'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'scrcpy'; open = false"
-                        :class="activeTab === 'scrcpy' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>Remote Screen</span>
-                        <span x-show="activeTab === 'scrcpy'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                </div>
             </div>
-
-            <!-- 🌐 Network Category -->
-            <div class="relative" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" @click.outside="open = false">
-                <button type="button" @click="open = !open"
-                    :class="['network', 'speedtest', 'zengobox'].includes(activeTab) ? 'bg-blue-600/20 text-blue-400 border-blue-500/40 shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/5 border-transparent'"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border select-none">
-                    <span>🌐 Network</span>
-                    <svg class="w-3 h-3 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
+        </div>
+        <!-- Status -->
+        <div>
+            <p class="px-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Status</p>
+            <div class="space-y-0.5">
+                <button type="button" @click="activeTab = 'sysinfo'; bfrCloseDrawer()"
+                    :class="activeTab === 'sysinfo' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">ℹ️</span><span class="flex-1 text-left">System Info</span>
                 </button>
-                <div x-show="open"
-                    x-transition:enter="transition ease-out duration-150"
-                    x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
-                    x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-100"
-                    x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
-                    class="absolute left-0 mt-1.5 w-52 rounded-xl bg-card border border-border/80 shadow-2xl p-1 z-[110] backdrop-blur-xl space-y-0.5"
-                    style="display: none;">
-                    <button type="button" @click="activeTab = 'network'; open = false"
-                        :class="activeTab === 'network' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>Network & Tweaks</span>
-                        <span x-show="activeTab === 'network'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'speedtest'; open = false"
-                        :class="activeTab === 'speedtest' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>Speedtest Engine</span>
-                        <span x-show="activeTab === 'speedtest'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'zengobox'; open = false"
-                        :class="activeTab === 'zengobox' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>ZenGoBox</span>
-                        <span x-show="activeTab === 'zengobox'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- 📦 Extras Category -->
-            <div class="relative" x-data="{ open: false }" @mouseenter="open = true" @mouseleave="open = false" @click.outside="open = false">
-                <button type="button" @click="open = !open"
-                    :class="['sms', 'about'].includes(activeTab) ? 'bg-blue-600/20 text-blue-400 border-blue-500/40 shadow-sm' : 'text-gray-300 hover:text-white hover:bg-white/5 border-transparent'"
-                    class="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 border select-none">
-                    <span>📦 Extras</span>
-                    <svg class="w-3 h-3 transition-transform duration-200" :class="open ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
+                <button type="button" @click="activeTab = 'logs'; fetchLogs(); bfrCloseDrawer()"
+                    :class="activeTab === 'logs' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">📜</span><span class="flex-1 text-left">System Logs</span>
                 </button>
-                <div x-show="open"
-                    x-transition:enter="transition ease-out duration-150"
-                    x-transition:enter-start="opacity-0 scale-95 -translate-y-1"
-                    x-transition:enter-end="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave="transition ease-in duration-100"
-                    x-transition:leave-start="opacity-100 scale-100 translate-y-0"
-                    x-transition:leave-end="opacity-0 scale-95 -translate-y-1"
-                    class="absolute left-0 mt-1.5 w-48 rounded-xl bg-card border border-border/80 shadow-2xl p-1 z-[110] backdrop-blur-xl space-y-0.5"
-                    style="display: none;">
-                    <button type="button" @click="activeTab = 'sms'; fetchSMS(); open = false"
-                        :class="activeTab === 'sms' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>SMS Viewer</span>
-                        <span x-show="activeTab === 'sms'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                    <button type="button" @click="activeTab = 'about'; open = false"
-                        :class="activeTab === 'about' ? 'bg-blue-600 text-white font-bold' : 'text-gray-300 hover:text-white hover:bg-white/5'"
-                        class="w-full text-left px-3 py-2 rounded-lg text-xs transition flex items-center justify-between select-none">
-                        <span>About & Docs</span>
-                        <span x-show="activeTab === 'about'" class="w-1.5 h-1.5 rounded-full bg-white"></span>
-                    </button>
-                </div>
             </div>
-        </nav>
-    </template>
+        </div>
+        <!-- System -->
+        <div>
+            <p class="px-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">System</p>
+            <div class="space-y-0.5">
+                <button type="button" @click="activeTab = 'files'; fetchFileList(currentPath); bfrCloseDrawer()"
+                    :class="activeTab === 'files' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">📁</span><span class="flex-1 text-left">File Manager</span>
+                </button>
+                <button type="button" @click="activeTab = 'terminal'; initTerminal(); bfrCloseDrawer()"
+                    :class="activeTab === 'terminal' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">💻</span><span class="flex-1 text-left">Web Terminal</span>
+                </button>
+                <button type="button" @click="activeTab = 'tools'; bfrCloseDrawer()"
+                    :class="activeTab === 'tools' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">🧰</span><span class="flex-1 text-left">Tools & Modules</span>
+                </button>
+            </div>
+        </div>
+        <!-- Network -->
+        <div>
+            <p class="px-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Network</p>
+            <div class="space-y-0.5">
+                <button type="button" @click="activeTab = 'network'; bfrCloseDrawer()"
+                    :class="activeTab === 'network' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">🌐</span><span class="flex-1 text-left">Network & Tweaks</span>
+                </button>
+                <button type="button" @click="activeTab = 'speedtest'; bfrCloseDrawer()"
+                    :class="activeTab === 'speedtest' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">⚡</span><span class="flex-1 text-left">Speedtest</span>
+                </button>
+                <button type="button" @click="activeTab = 'zengobox'; bfrCloseDrawer()"
+                    :class="activeTab === 'zengobox' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">🚀</span><span class="flex-1 text-left">ZenGoBox</span>
+                </button>
+            </div>
+        </div>
+        <!-- Services -->
+        <div>
+            <p class="px-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Services</p>
+            <div class="space-y-0.5">
+                <button type="button" @click="activeTab = 'scrcpy'; bfrCloseDrawer()"
+                    :class="activeTab === 'scrcpy' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">📱</span><span class="flex-1 text-left">Remote Screen</span>
+                </button>
+            </div>
+        </div>
+        <!-- Extras -->
+        <div class="pb-6">
+            <p class="px-3 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">Extras</p>
+            <div class="space-y-0.5">
+                <button type="button" @click="activeTab = 'sms'; fetchSMS(); bfrCloseDrawer()"
+                    :class="activeTab === 'sms' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">💬</span><span class="flex-1 text-left">SMS Viewer</span>
+                </button>
+                <button type="button" @click="activeTab = 'about'; bfrCloseDrawer()"
+                    :class="activeTab === 'about' ? 'bg-[#f97815]/15 text-[#f97815] font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-white'"
+                    class="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all select-none">
+                    <span class="text-lg leading-none">📖</span><span class="flex-1 text-left">About & Docs</span>
+                </button>
+            </div>
+        </div>
+    </nav>
 {{end}}
