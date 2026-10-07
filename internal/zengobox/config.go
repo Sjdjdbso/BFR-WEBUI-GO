@@ -65,7 +65,7 @@ type APList struct {
 type ProcessConfig struct {
 	UserGroup      string `yaml:"user_group"     json:"UserGroup"`
 	MaxRestarts    int    `yaml:"max_restarts"    json:"MaxRestarts"`
-	RestartWindow  string `yaml:"restart_window" json:"RestartWindow"`  // e.g. "5m"
+	RestartWindow  string `yaml:"restart_window" json:"RestartWindow"`   // e.g. "5m"
 	RestartBackoff string `yaml:"restart_backoff" json:"RestartBackoff"` // e.g. "3s"
 }
 
@@ -137,6 +137,12 @@ func baseDir() string {
 // ConfigPath returns the path of the master config file.
 func ConfigPath() string {
 	return filepath.Join(baseDir(), "zengobox.yaml")
+}
+
+// DefaultRunDir returns the default run directory without loading any
+// config (used by one-shot tools like --clean-netfilter).
+func DefaultRunDir() string {
+	return filepath.Join(baseDir(), "run")
 }
 
 // DefaultConfig returns a ZengoConfig with safe defaults mirroring the
