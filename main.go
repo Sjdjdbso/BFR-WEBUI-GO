@@ -18,6 +18,8 @@ import (
 	"bfr-webui-go/internal/ssh"
 	"bfr-webui-go/internal/telegram"
 	_ "bfr-webui-go/internal/vnstat"
+	"bfr-webui-go/internal/zengobox"
+	"bfr-webui-go/internal/zengobox/netfilter"
 )
 
 func main() {
@@ -25,7 +27,21 @@ func main() {
 
 	port := flag.String("port", "8080", "HTTP server port")
 	applyTweaks := flag.Bool("apply-tweaks", false, "Apply all optimized network tweaks and exit")
+	cleanNetfilter := flag.Bool("clean-netfilter", false, "Clean ZenGoBox netfilter remnants (chains, fwmark rules, TUN ifaces) and exit")
 	flag.Parse()
+
+	if *cleanNetfilter {
+		log.Println("Cleaning ZenGoBox netfilter remnants...")
+		// Prefer the configured run dir so the PID file is found; fall
+		// back to the default when the config cannot be loaded.
+		runDir := zengobox.DefaultRunDir()
+		if cfg, err := zengobox.GetConfig(); err == nil {
+			runDir = cfg.EffectiveRunDir()
+		}
+		_ = netfilter.CleanAll(runDir)
+		log.Println("Netfilter cleanup done.")
+		os.Exit(0)
+	}
 
 	if *applyTweaks {
 		log.Println("Applying system & network optimizations from tweaks.json...")
@@ -63,6 +79,11 @@ func main() {
 			}
 		}
 	}()
+
+	// ZenGoBox background automation: cron scheduler (geo + subscription
+	// updates), Smart WiFi watcher and core.log rotator. Each worker
+	// checks its own enable flag from zengobox.yaml before doing anything.
+	go zengobox.StartBackground()
 
 	addr := ":" + *port
 	server := &http.Server{

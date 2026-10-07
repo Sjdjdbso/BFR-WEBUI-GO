@@ -110,12 +110,20 @@ func RegisterRoutes(mux *http.ServeMux, authMgr *auth.Manager) {
 	mux.HandleFunc("/api/network/rps", wrap(HandleRPS, true))
 	mux.HandleFunc("/api/network/ttl", wrap(HandleTTL, true))
 
-	// Proxy URLs
-	mux.HandleFunc("/api/proxy/status", wrap(HandleProxyStatus, true))
-	mux.HandleFunc("/api/proxy/control", wrap(HandleProxyControl, true))
-	mux.HandleFunc("/api/proxy/logs", wrap(HandleProxyLogs, true))
-	mux.HandleFunc("/api/proxy/watchdog", wrap(HandleProxyWatchdog, true))
-	mux.HandleFunc("/api/proxy/config", wrap(HandleProxyConfig, true))
+	// ZenGoBox URLs (replaces the retired /api/proxy/* box-for-root controller)
+	mux.HandleFunc("/api/zengobox/status", wrap(HandleZengoboxStatus, true))
+	mux.HandleFunc("/api/zengobox/config", wrap(HandleZengoboxConfig, true))
+	mux.HandleFunc("/api/zengobox/sysinfo", wrap(HandleZengoboxSysinfo, true))
+	mux.HandleFunc("/api/zengobox/apps", wrap(HandleZengoboxApps, true))
+	mux.HandleFunc("/api/zengobox/start", wrap(HandleZengoboxStart, true))
+	mux.HandleFunc("/api/zengobox/stop", wrap(HandleZengoboxStop, true))
+	mux.HandleFunc("/api/zengobox/restart", wrap(HandleZengoboxRestart, true))
+	mux.HandleFunc("/api/zengobox/logs", wrap(HandleZengoboxLogs, true))
+	mux.HandleFunc("/api/zengobox/accounts", wrap(HandleZengoboxAccounts, true))
+	mux.HandleFunc("/api/zengobox/accounts/convert", wrap(HandleZengoboxConvert, true))
+	mux.HandleFunc("/api/zengobox/core-config", wrap(HandleZengoboxCoreConfig, true))
+	mux.HandleFunc("/api/zengobox/setup", wrap(HandleZengoboxSetup, true))
+	mux.HandleFunc("/api/zengobox/setup_log", wrap(HandleZengoboxSetupLog, true))
 
 	// Files URLs
 	mux.HandleFunc("/api/files/list", wrap(HandleFilesList, true))

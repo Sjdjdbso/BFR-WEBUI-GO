@@ -1,4 +1,10 @@
-package proxy
+package zengobox
+
+// Core detection, process control, Clash API mode, log streaming and the
+// legacy watchdog — moved from the retired internal/proxy package
+// ("box for root" controller) so existing callers (e.g. the Telegram bot)
+// keep working. The watchdog and ControlService are superseded by Manager
+// (zengobox.go) in Phase 2; they remain here as a compatibility layer.
 
 import (
 	"bufio"
@@ -45,8 +51,13 @@ var (
 	// L-4: allow overriding hardcoded base paths via environment variables.
 	boxBasePath   = envOrDefault("BFR_BOX_BASE", "/data/adb/box")
 	clashBasePath = envOrDefault("BFR_CLASH_BASE", "/data/adb/clash")
+	// ZenGoBox-managed core binaries (populated by the setup wizard).
+	zengoBinDir = filepath.Join(config.GetPersistentDataDir(), "zengobox", "bin")
 
 	possibleCores = []string{
+		zengoBinDir + "/sing-box",
+		zengoBinDir + "/mihomo",
+		zengoBinDir + "/clash",
 		boxBasePath + "/bin/mihomo",
 		clashBasePath + "/clash",
 		"/data/adb/modules/box4magisk/bin/mihomo",
@@ -71,6 +82,25 @@ func init() {
 	go runWatchdog()
 }
 
+// legacyWatchdogSuppressed is set once the ZenGoBox Manager takes ownership
+// of proxy core supervision (Phase 2). The old 10-second "restart blindly"
+// watchdog must never fight the Manager over the same core processes, so
+// runWatchdog becomes a no-op from that point on.
+var legacyWatchdogSuppressed bool
+
+func suppressLegacyWatchdog() {
+	watchdogMux.Lock()
+	defer watchdogMux.Unlock()
+	legacyWatchdogSuppressed = true
+	watchdogEnabled = false
+}
+
+func isLegacyWatchdogSuppressed() bool {
+	watchdogMux.Lock()
+	defer watchdogMux.Unlock()
+	return legacyWatchdogSuppressed
+}
+
 func SetWatchdog(enable bool) {
 	watchdogMux.Lock()
 	defer watchdogMux.Unlock()
@@ -87,6 +117,9 @@ func runWatchdog() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
+		if isLegacyWatchdogSuppressed() {
+			continue
+		}
 		if GetWatchdog() {
 			cores := DetectCores()
 			anyRunning := false
@@ -113,7 +146,7 @@ func getCandidateCorePaths() []string {
 	}
 
 	// 1. Dynamic PATH lookup
-	for _, coreName := range []string{"mihomo", "clash"} {
+	for _, coreName := range []string{"sing-box", "mihomo", "clash"} {
 		if path, err := exec.LookPath(coreName); err == nil && path != "" {
 			if !seen[path] {
 				seen[path] = true
@@ -129,7 +162,7 @@ func getCandidateCorePaths() []string {
 			if !entry.IsDir() {
 				continue
 			}
-			for _, coreName := range []string{"mihomo", "clash"} {
+			for _, coreName := range []string{"sing-box", "mihomo", "clash"} {
 				candPath := filepath.Join(modulesDir, entry.Name(), "bin", coreName)
 				if !seen[candPath] {
 					if _, err := os.Stat(candPath); err == nil {
@@ -144,6 +177,18 @@ func getCandidateCorePaths() []string {
 	return paths
 }
 
+func coreNameForPath(p string) string {
+	lower := strings.ToLower(p)
+	switch {
+	case strings.Contains(lower, "sing-box"):
+		return "sing-box"
+	case strings.Contains(lower, "clash"):
+		return "clash"
+	default:
+		return "mihomo"
+	}
+}
+
 func DetectCores() []CoreInfo {
 	var list []CoreInfo
 	paths := getCandidateCorePaths()
@@ -155,18 +200,14 @@ func DetectCores() []CoreInfo {
 		}
 		seenPaths[p] = true
 
-		name := "mihomo"
-		if strings.Contains(strings.ToLower(p), "clash") {
-			name = "clash"
-		}
 		info := CoreInfo{
-			Name: name,
+			Name: coreNameForPath(p),
 			Path: p,
 		}
 
 		if _, err := os.Stat(p); err == nil {
 			info.Exists = true
-			pid, running := checkRunning(name)
+			pid, running := checkRunning(info.Name)
 			info.Running = running
 			info.PID = pid
 			if running && pid > 0 {
@@ -264,6 +305,9 @@ func ControlService(action string) error {
 		if _, ok := checkRunning("clash"); ok {
 			return nil
 		}
+		if _, ok := checkRunning("sing-box"); ok {
+			return nil
+		}
 		cmdStr = fmt.Sprintf(
 			"if [ -f %s/scripts/box.service ]; then %s/scripts/box.service start; elif [ -f %s/scripts/clash.service ]; then %s/scripts/clash.service start; else %s -c mihomo -d %s/bin/ & fi",
 			boxBasePath, boxBasePath, clashBasePath, clashBasePath, config.SUBin, boxBasePath,
@@ -271,12 +315,12 @@ func ControlService(action string) error {
 	case "stop":
 		SetWatchdog(false)
 		cmdStr = fmt.Sprintf(
-			"if [ -f %s/scripts/box.service ]; then %s/scripts/box.service stop; elif [ -f %s/scripts/clash.service ]; then %s/scripts/clash.service stop; else killall mihomo clash 2>/dev/null || true; fi",
+			"if [ -f %s/scripts/box.service ]; then %s/scripts/box.service stop; elif [ -f %s/scripts/clash.service ]; then %s/scripts/clash.service stop; else killall mihomo clash sing-box 2>/dev/null || true; fi",
 			boxBasePath, boxBasePath, clashBasePath, clashBasePath,
 		)
 	case "restart":
 		cmdStr = fmt.Sprintf(
-			"if [ -f %s/scripts/box.service ]; then %s/scripts/box.service restart; elif [ -f %s/scripts/clash.service ]; then %s/scripts/clash.service restart; else killall mihomo clash 2>/dev/null; sleep 1; mihomo -d %s/bin/ & fi",
+			"if [ -f %s/scripts/box.service ]; then %s/scripts/box.service restart; elif [ -f %s/scripts/clash.service ]; then %s/scripts/clash.service restart; else killall mihomo clash sing-box 2>/dev/null; sleep 1; mihomo -d %s/bin/ & fi",
 			boxBasePath, boxBasePath, clashBasePath, clashBasePath, boxBasePath,
 		)
 	default:

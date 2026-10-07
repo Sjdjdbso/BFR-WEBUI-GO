@@ -22,7 +22,7 @@ import (
 	"bfr-webui-go/internal/logger"
 	"bfr-webui-go/internal/modules"
 	"bfr-webui-go/internal/network"
-	"bfr-webui-go/internal/proxy"
+	"bfr-webui-go/internal/zengobox"
 	"bfr-webui-go/internal/ssh"
 	"bfr-webui-go/internal/sysinfo"
 )
@@ -617,9 +617,9 @@ func buildSSHMessageAndKeyboard() (string, InlineKeyboardMarkup) {
 }
 
 func buildProxyMessageAndKeyboard() (string, InlineKeyboardMarkup) {
-	cores := proxy.DetectCores()
-	mode := proxy.GetMode()
-	watchdog := proxy.GetWatchdog()
+	cores := zengobox.DetectCores()
+	mode := zengobox.GetMode()
+	watchdog := zengobox.GetWatchdog()
 
 	var coreLines []string
 	for _, c := range cores {
@@ -1011,7 +1011,7 @@ func (m *Manager) handleCallbackQuery(cb *struct {
 			m.sendMessage(chatID, "🔄 *Restarting proxy service...*")
 		}
 		go func() {
-			err := proxy.ControlService("restart")
+			err := zengobox.ControlService("restart")
 			time.Sleep(1 * time.Second)
 			msg, kb := buildProxyMessageAndKeyboard()
 			if err != nil {
@@ -1128,7 +1128,7 @@ func (m *Manager) handleMessage(chatID int64, text string) {
 		if len(parts) >= 2 && strings.ToLower(parts[1]) == "restart" {
 			m.sendMessage(chatID, "🔄 *Restarting proxy service...*")
 			go func() {
-				err := proxy.ControlService("restart")
+				err := zengobox.ControlService("restart")
 				time.Sleep(1 * time.Second)
 				msg, kb := buildProxyMessageAndKeyboard()
 				if err != nil {
