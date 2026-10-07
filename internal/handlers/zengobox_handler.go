@@ -276,7 +276,6 @@ func HandleZengoboxRestart(w http.ResponseWriter, r *http.Request) {
 
 // maxLogLines bounds the /api/zengobox/logs response (frontend polls it).
 const maxLogLines = 200
-
 // HandleZengoboxLogs returns the tail of the core log file.
 func HandleZengoboxLogs(w http.ResponseWriter, r *http.Request) {
 	cfg, err := zengobox.GetConfig()
@@ -297,4 +296,203 @@ func HandleZengoboxLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	writeJSON(w, map[string]interface{}{"logs": logs})
+}
+// HandleZengoboxAccounts serves raw proxy account files (GET) and saves
+// them (POST). Query: ?file=AKUN-ID|AKUN-SG&core=clash|sing-box.
+// GET returns plain text (the frontend reads it with res.text()).
+// POST takes {"content": "<full file text>"} and replaces the file.
+func HandleZengoboxAccounts(w http.ResponseWriter, r *http.Request) {
+	file := r.URL.Query().Get("file")
+	core := r.URL.Query().Get("core")
+
+	if r.Method == http.MethodGet {
+		text, err := zengobox.ReadAccounts(file, core)
+		if err != nil {
+			writeJSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write([]byte(text))
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		var body struct {
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSONError(w, http.StatusBadRequest, "Invalid body")
+			return
+		}
+		if err := zengobox.WriteAccounts(file, core, body.Content); err != nil {
+			writeJSONError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		logger.Get().Infof("zengobox", "accounts saved: %s (%s)", file, core)
+		writeJSON(w, map[string]interface{}{"success": true})
+		return
+	}
+
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+}
+
+// HandleZengoboxConvert converts one share link into a proxy definition.
+// Query: ?core=clash|sing-box. Body: {"link": "vmess://..."}.
+// Response: {"yaml": "- name: ..."} for clash, or the JSON outbound object
+// for sing-box — exactly what zengobox.js v1.4.41 expects.
+func HandleZengoboxConvert(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	core := r.URL.Query().Get("core")
+	var body struct {
+		Link string `json:"link"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid body")
+		return
+	}
+	if strings.TrimSpace(body.Link) == "" {
+		writeJSONError(w, http.StatusBadRequest, "link is required")
+		return
+	}
+	// Gather taken names from both account files so the new name is unique.
+	taken := map[string]bool{}
+	for _, f := range []string{"AKUN-ID.yaml", "AKUN-SG.yaml", "AKUN-ID.json", "AKUN-SG.json"} {
+		if names, err := zengobox.ExistingNames(f, core); err == nil {
+			for n := range names {
+				taken[n] = true
+			}
+		}
+	}
+	out, err := zengobox.ConvertLink(body.Link, core, taken)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	writeJSON(w, out)
+}
+
+// coreConfigFile resolves the managed core config file for ?core=.
+func coreConfigFile(core string) (string, error) {
+	c := strings.ToLower(strings.TrimSpace(core))
+	if c != "clash" && c != "sing-box" {
+		return "", fmt.Errorf("invalid core %q (want clash|sing-box)", core)
+	}
+	cfg, err := zengobox.GetConfig()
+	if err != nil {
+		return "", err
+	}
+	name := cfg.Core.ConfigNames[c]
+	if name == "" {
+		if c == "sing-box" {
+			name = "config.json"
+		} else {
+			name = "config.yaml"
+		}
+	}
+	if strings.Contains(name, "/") || strings.Contains(name, "..") {
+		return "", fmt.Errorf("invalid config name %q", name)
+	}
+	return filepath.Join(cfg.EffectiveBoxDir(), name), nil
+}
+
+// HandleZengoboxCoreConfig serves (GET) and saves (POST) the raw core
+// config file. Query: ?core=clash|sing-box. POST takes {"content": "..."}
+// and restarts the daemon afterwards, mirroring v1.4.41.
+func HandleZengoboxCoreConfig(w http.ResponseWriter, r *http.Request) {
+	core := r.URL.Query().Get("core")
+	p, err := coreConfigFile(core)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if r.Method == http.MethodGet {
+		data, err := os.ReadFile(p)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// Fall back to the legacy clash config location.
+				if strings.ToLower(core) == "clash" {
+					if _, legacy, lerr := zengobox.ReadConfig(); lerr == nil {
+						w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+						_, _ = w.Write([]byte(legacy))
+						return
+					}
+				}
+				writeJSONError(w, http.StatusNotFound, "core config not found")
+				return
+			}
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		_, _ = w.Write(data)
+		return
+	}
+
+	if r.Method == http.MethodPost {
+		var body struct {
+			Content string `json:"content"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			writeJSONError(w, http.StatusBadRequest, "Invalid body")
+			return
+		}
+		if len(body.Content) > 2<<20 {
+			writeJSONError(w, http.StatusBadRequest, "content too large")
+			return
+		}
+		if err := os.MkdirAll(filepath.Dir(p), 0755); err != nil {
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if err := os.WriteFile(p, []byte(body.Content), 0644); err != nil {
+			writeJSONError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		logger.Get().Infof("zengobox", "core config saved for %s", core)
+		// Auto-restart so the new config takes effect (v1.4.41 behavior).
+		mgr := zengobox.GetManager()
+		if st := mgr.Status(); st.Running {
+			if err := mgr.Restart(); err != nil {
+				writeJSON(w, map[string]interface{}{
+					"success": true, "restart_error": err.Error(),
+				})
+				return
+			}
+		}
+		writeJSON(w, map[string]interface{}{"success": true})
+		return
+	}
+
+	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+}
+
+// HandleZengoboxSetup starts the setup wizard (POST). Body:
+// {"core": "clash"|"sing-box"|"all", "version": "1.14.1",
+//  "dashboard": "<zip URL>"|"none"}. Progress goes to run/setup.log.
+func HandleZengoboxSetup(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var req zengobox.SetupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "Invalid body")
+		return
+	}
+	if err := zengobox.StartSetup(req); err != nil {
+		writeJSONError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, map[string]interface{}{"success": true})
+}
+
+// HandleZengoboxSetupLog returns the raw setup log as plain text.
+// The frontend polls it every second during installation.
+func HandleZengoboxSetupLog(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	_, _ = w.Write([]byte(zengobox.SetupLog()))
 }
