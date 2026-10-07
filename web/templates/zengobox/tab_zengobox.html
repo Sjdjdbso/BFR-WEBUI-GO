@@ -7,7 +7,16 @@
                             <h2 class="text-lg font-extrabold text-white tracking-wide uppercase">ZenGoBox</h2>
                             <p class="text-xs text-gray-400">Master Control Panel</p>
                         </div>
-                        <div class="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <div class="inline-flex items-center gap-2">
+                                <button @click="zbControl('start')" :disabled="zbActionBusy"
+                                    class="px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-green-500/15 border border-green-500/40 text-green-300 hover:bg-green-500/25 transition-colors disabled:opacity-40">▶ Start</button>
+                                <button @click="zbControl('stop')" :disabled="zbActionBusy"
+                                    class="px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-red-500/15 border border-red-500/40 text-red-300 hover:bg-red-500/25 transition-colors disabled:opacity-40">⏹ Stop</button>
+                                <button @click="zbControl('restart')" :disabled="zbActionBusy"
+                                    class="px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-white/5 border border-white/15 text-gray-300 hover:border-[#f97815]/60 transition-colors disabled:opacity-40">↻ Restart</button>
+                            </div>
+                            <div class="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5">
                             <template x-if="zbLoading">
                                 <span class="flex items-center gap-2 text-xs font-bold text-gray-400">
                                     <span class="w-2 h-2 rounded-full bg-[#f97815] animate-ping"></span> Connecting...
@@ -28,16 +37,69 @@
                             </template>
                         </div>
                     </div>
+                    </div>
 
-                    <!-- Setup notice -->
+                    <!-- Setup notice + wizard -->
                     <template x-if="zbStatus && zbStatus.needs_setup">
                         <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5">
                             <div class="flex items-start gap-3">
                                 <span class="text-2xl">📦</span>
-                                <div>
+                                <div class="flex-1">
                                     <p class="text-sm font-extrabold text-amber-300 uppercase tracking-wider">Core not installed</p>
-                                    <p class="text-xs text-gray-400 mt-1">No proxy core binary found yet. The setup wizard to download cores is coming soon.</p>
+                                    <p class="text-xs text-gray-400 mt-1">No proxy core binary found yet. Download one with the setup wizard below.</p>
+                                    <button @click="zbShowSetup = !zbShowSetup"
+                                        class="mt-3 px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-[#f97815]/15 border border-[#f97815]/50 text-[#f97815] hover:bg-[#f97815]/25 transition-colors">🧙 Setup Wizard</button>
                                 </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Setup wizard panel -->
+                    <template x-if="zbShowSetup">
+                        <div class="bg-card border border-border rounded-2xl p-5">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">🧙 Core &amp; Dashboard Installer</h3>
+                                <button @click="zbShowSetup = false; zbStopSetupPoll()" class="text-xs text-gray-500 hover:text-white">✕ Close</button>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">Core</label>
+                                    <select x-model="zbSetupCore" :disabled="zbSetupRunning"
+                                        class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#f97815]/60">
+                                        <option value="sing-box">Sing-Box</option>
+                                        <option value="clash">Clash (Mihomo)</option>
+                                        <option value="all">Both cores</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">Version (empty = latest)</label>
+                                    <input x-model="zbSetupVersion" :disabled="zbSetupRunning" type="text" placeholder="e.g. 1.12.0"
+                                        class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 outline-none focus:border-[#f97815]/60">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] font-bold uppercase tracking-wider text-gray-500 block mb-1">Dashboard</label>
+                                    <select x-model="zbSetupDashboard" :disabled="zbSetupRunning"
+                                        class="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-[#f97815]/60">
+                                        <template x-for="opt in zbDashboardOptions()" :key="opt.v">
+                                            <option :value="opt.v" x-text="opt.t"></option>
+                                        </template>
+                                    </select>
+                                </div>
+                            </div>
+                            <button @click="zbStartSetup()" :disabled="zbSetupRunning"
+                                class="px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-[#f97815] text-black hover:brightness-110 transition disabled:opacity-40">
+                                <span x-text="zbSetupRunning ? '⏳ Installing...' : (zbSetupDone ? '↻ Reinstall' : '🚀 Begin Installation')"></span>
+                            </button>
+                            <template x-if="zbSetupFailed">
+                                <button @click="zbStartSetup()" class="ml-2 px-4 py-2.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-white/5 border border-white/15 text-gray-300">🔁 Retry</button>
+                            </template>
+                            <div class="mt-4">
+                                <pre id="zb-setup-log" x-text="zbSetupLog"
+                                    class="h-44 overflow-y-auto bg-black/40 border border-white/10 rounded-xl p-3 text-[11px] font-mono text-gray-300 whitespace-pre-wrap"></pre>
+                                <p class="text-center text-xs font-bold mt-2"
+                                    :class="zbSetupDone ? 'text-green-400' : (zbSetupFailed ? 'text-red-400' : 'text-[#f97815]')">
+                                    <span x-text="zbSetupDone ? 'Setup complete! Restarting daemon...' : (zbSetupFailed ? 'Setup failed — see log above' : '')"></span>
+                                </p>
                             </div>
                         </div>
                     </template>
@@ -150,26 +212,79 @@
                         </div>
                     </div>
 
-                    <!-- Coming soon -->
-                    <div class="bg-card border border-dashed border-white/15 rounded-2xl p-5 opacity-80">
-                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">🔜 Coming Soon</h3>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
-                                <p class="text-lg mb-1">⏻</p>
-                                <p class="text-xs font-extrabold text-gray-300 uppercase tracking-wider">Start / Stop</p>
-                                <p class="text-[10px] text-gray-500 mt-1">Daemon control lands in Phase 2</p>
-                            </div>
-                            <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
-                                <p class="text-lg mb-1">🔑</p>
-                                <p class="text-xs font-extrabold text-gray-300 uppercase tracking-wider">Proxy Accounts</p>
-                                <p class="text-[10px] text-gray-500 mt-1">Account manager lands in Phase 3</p>
-                            </div>
-                            <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
-                                <p class="text-lg mb-1">📜</p>
-                                <p class="text-xs font-extrabold text-gray-300 uppercase tracking-wider">Live Logs</p>
-                                <p class="text-[10px] text-gray-500 mt-1">Log streaming lands in Phase 2</p>
+                    <!-- Proxy Accounts -->
+                    <div class="bg-card border border-border rounded-2xl p-5" x-init="zbLoadAccounts()">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">🔑 Proxy Accounts</h3>
+                            <div class="flex items-center gap-2">
+                                <select x-model="zbAcctFile" @change="zbLoadAccounts()"
+                                    class="bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none focus:border-[#f97815]/60">
+                                    <option value="AKUN-ID">AKUN-ID</option>
+                                    <option value="AKUN-SG">AKUN-SG</option>
+                                </select>
+                                <select x-model="zbAcctCore" @change="zbLoadAccounts()"
+                                    class="bg-white/5 border border-white/10 rounded-xl px-2 py-1.5 text-xs text-white outline-none focus:border-[#f97815]/60">
+                                    <option value="clash">Clash</option>
+                                    <option value="sing-box">Sing-Box</option>
+                                </select>
+                                <button @click="zbLoadAccounts()" class="text-xs font-bold text-[#f97815] hover:text-white transition-colors">↻</button>
                             </div>
                         </div>
+                        <div class="flex flex-col sm:flex-row gap-2 mb-4">
+                            <input x-model="zbLinkInput" type="text" placeholder="Paste vmess / vless / trojan link here..."
+                                class="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-600 outline-none focus:border-[#f97815]/60 font-mono">
+                            <button @click="zbConvertAndSave()" :disabled="zbAcctBusy || !zbLinkInput.trim()"
+                                class="px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-[#f97815] text-black hover:brightness-110 transition disabled:opacity-40">＋ Add</button>
+                        </div>
+                        <div class="max-h-64 overflow-y-auto space-y-1 pr-1 mb-3">
+                            <template x-for="name in zbAcctList" :key="name">
+                                <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/15 transition-colors">
+                                    <p class="text-xs font-bold text-white truncate font-mono" x-text="name"></p>
+                                    <button @click="zbDeleteAccount(name)"
+                                        class="shrink-0 text-[10px] font-extrabold uppercase tracking-wider text-red-300 bg-red-500/10 border border-red-500/30 px-2 py-1 rounded-lg hover:bg-red-500/20">Delete</button>
+                                </div>
+                            </template>
+                            <template x-if="zbAcctList.length === 0">
+                                <p class="text-xs text-gray-500 text-center py-6">No accounts yet — paste a link above to add one.</p>
+                            </template>
+                        </div>
+                        <button @click="zbOpenEditAll()" class="text-xs font-bold text-gray-400 hover:text-white transition-colors">✏️ Edit raw file</button>
+
+                        <!-- Edit-all modal -->
+                        <template x-if="zbEditAll">
+                            <div class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70" @click.self="zbEditAll = false">
+                                <div class="w-full max-w-2xl bg-card border border-border rounded-2xl p-5">
+                                    <div class="flex items-center justify-between mb-3">
+                                        <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Edit <span x-text="zbAcctFileName()"></span></h4>
+                                        <button @click="zbEditAll = false" class="text-gray-500 hover:text-white">✕</button>
+                                    </div>
+                                    <textarea x-model="zbEditAllText" rows="14"
+                                        class="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-[11px] font-mono text-gray-200 outline-none focus:border-[#f97815]/60"></textarea>
+                                    <div class="flex justify-end gap-2 mt-3">
+                                        <button @click="zbEditAll = false" class="px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white">Cancel</button>
+                                        <button @click="zbApplyEditAll()" class="px-4 py-2 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-[#f97815] text-black">Save</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Live logs -->
+                    <div class="bg-card border border-border rounded-2xl p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">📜 Live Logs</h3>
+                            <div class="flex items-center gap-3">
+                                <label class="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer select-none">
+                                    <input type="checkbox" x-model="zbAutoScroll" class="accent-[#f97815]"> Auto-scroll
+                                </label>
+                                <button @click="zbToggleLogs()"
+                                    class="px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider border transition-colors"
+                                    :class="zbLogsOn ? 'bg-red-500/15 border-red-500/40 text-red-300' : 'bg-green-500/15 border-green-500/40 text-green-300'"
+                                    x-text="zbLogsOn ? '⏹ Stop' : '▶ Tail'"></button>
+                            </div>
+                        </div>
+                        <pre id="zb-log-view"
+                            class="h-56 overflow-y-auto bg-black/40 border border-white/10 rounded-xl p-3 text-[11px] font-mono text-gray-300 whitespace-pre-wrap"><template x-for="line in zbLogs" :key="line"><span x-text="line + '\n'"></span></template><span x-if="zbLogs.length === 0" class="text-gray-600">Press ▶ Tail to start streaming core logs.</span></pre>
                     </div>
                 </div>
 {{end}}
