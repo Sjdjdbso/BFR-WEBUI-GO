@@ -82,6 +82,25 @@ func init() {
 	go runWatchdog()
 }
 
+// legacyWatchdogSuppressed is set once the ZenGoBox Manager takes ownership
+// of proxy core supervision (Phase 2). The old 10-second "restart blindly"
+// watchdog must never fight the Manager over the same core processes, so
+// runWatchdog becomes a no-op from that point on.
+var legacyWatchdogSuppressed bool
+
+func suppressLegacyWatchdog() {
+	watchdogMux.Lock()
+	defer watchdogMux.Unlock()
+	legacyWatchdogSuppressed = true
+	watchdogEnabled = false
+}
+
+func isLegacyWatchdogSuppressed() bool {
+	watchdogMux.Lock()
+	defer watchdogMux.Unlock()
+	return legacyWatchdogSuppressed
+}
+
 func SetWatchdog(enable bool) {
 	watchdogMux.Lock()
 	defer watchdogMux.Unlock()
@@ -98,6 +117,9 @@ func runWatchdog() {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
+		if isLegacyWatchdogSuppressed() {
+			continue
+		}
 		if GetWatchdog() {
 			cores := DetectCores()
 			anyRunning := false
