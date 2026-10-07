@@ -17,8 +17,9 @@ import (
 	"bfr-webui-go/internal/network"
 	"bfr-webui-go/internal/ssh"
 	"bfr-webui-go/internal/telegram"
-	"bfr-webui-go/internal/zengobox/netfilter"
 	_ "bfr-webui-go/internal/vnstat"
+	"bfr-webui-go/internal/zengobox"
+	"bfr-webui-go/internal/zengobox/netfilter"
 )
 
 func main() {
@@ -31,8 +32,13 @@ func main() {
 
 	if *cleanNetfilter {
 		log.Println("Cleaning ZenGoBox netfilter remnants...")
-		// Run from the default run dir so the PID file is found.
-		_ = netfilter.CleanAll("")
+		// Prefer the configured run dir so the PID file is found; fall
+		// back to the default when the config cannot be loaded.
+		runDir := zengobox.DefaultRunDir()
+		if cfg, err := zengobox.GetConfig(); err == nil {
+			runDir = cfg.EffectiveRunDir()
+		}
+		_ = netfilter.CleanAll(runDir)
 		log.Println("Netfilter cleanup done.")
 		os.Exit(0)
 	}
