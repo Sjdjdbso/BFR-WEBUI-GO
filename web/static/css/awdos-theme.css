@@ -282,3 +282,17 @@ pre {
 div[class*="bg-blue-500"].h-2 {
   background-color: var(--neo-accent) !important;
 }
+
+/* ---------- 14. Wave 2: remaining solid blue accents -> AWDOS orange ---------- */
+.text-blue-300 { color: rgba(249, 120, 21, 0.75) !important; }
+.text-blue-400,
+.text-blue-500 { color: #f97815 !important; }
+.text-blue-600 { color: #e56a0c !important; }
+.bg-blue-500,
+.bg-blue-600 { background-color: #f97815 !important; }
+.border-blue-500 { border-color: rgba(249, 120, 21, 0.55) !important; }
+.accent-blue-500 { accent-color: #f97815 !important; }
+.shadow-blue-500\/20 { --tw-shadow-color: rgba(249, 120, 21, 0.20) !important; }
+.from-blue-500 { --tw-gradient-from: #f97815 !important; }
+.to-blue-600 { --tw-gradient-to: #e56a0c !important; }
+
