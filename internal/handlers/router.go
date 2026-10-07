@@ -110,12 +110,11 @@ func RegisterRoutes(mux *http.ServeMux, authMgr *auth.Manager) {
 	mux.HandleFunc("/api/network/rps", wrap(HandleRPS, true))
 	mux.HandleFunc("/api/network/ttl", wrap(HandleTTL, true))
 
-	// Proxy URLs
-	mux.HandleFunc("/api/proxy/status", wrap(HandleProxyStatus, true))
-	mux.HandleFunc("/api/proxy/control", wrap(HandleProxyControl, true))
-	mux.HandleFunc("/api/proxy/logs", wrap(HandleProxyLogs, true))
-	mux.HandleFunc("/api/proxy/watchdog", wrap(HandleProxyWatchdog, true))
-	mux.HandleFunc("/api/proxy/config", wrap(HandleProxyConfig, true))
+	// ZenGoBox URLs (replaces the retired /api/proxy/* box-for-root controller)
+	mux.HandleFunc("/api/zengobox/status", wrap(HandleZengoboxStatus, true))
+	mux.HandleFunc("/api/zengobox/config", wrap(HandleZengoboxConfig, true))
+	mux.HandleFunc("/api/zengobox/sysinfo", wrap(HandleZengoboxSysinfo, true))
+	mux.HandleFunc("/api/zengobox/apps", wrap(HandleZengoboxApps, true))
 
 	// Files URLs
 	mux.HandleFunc("/api/files/list", wrap(HandleFilesList, true))

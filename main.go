@@ -17,6 +17,7 @@ import (
 	"bfr-webui-go/internal/network"
 	"bfr-webui-go/internal/ssh"
 	"bfr-webui-go/internal/telegram"
+	"bfr-webui-go/internal/zengobox/netfilter"
 	_ "bfr-webui-go/internal/vnstat"
 )
 
@@ -25,7 +26,16 @@ func main() {
 
 	port := flag.String("port", "8080", "HTTP server port")
 	applyTweaks := flag.Bool("apply-tweaks", false, "Apply all optimized network tweaks and exit")
+	cleanNetfilter := flag.Bool("clean-netfilter", false, "Clean ZenGoBox netfilter remnants (chains, fwmark rules, TUN ifaces) and exit")
 	flag.Parse()
+
+	if *cleanNetfilter {
+		log.Println("Cleaning ZenGoBox netfilter remnants...")
+		// Run from the default run dir so the PID file is found.
+		_ = netfilter.CleanAll("")
+		log.Println("Netfilter cleanup done.")
+		os.Exit(0)
+	}
 
 	if *applyTweaks {
 		log.Println("Applying system & network optimizations from tweaks.json...")
