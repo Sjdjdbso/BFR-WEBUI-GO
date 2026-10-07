@@ -30,14 +30,17 @@
         }
     </script>
 </head>
-<body class="bg-amoled text-gray-200 min-h-screen flex flex-col antialiased selection:bg-blue-500 selection:text-white w-full max-w-full overflow-x-hidden"
+<body class="bg-amoled text-gray-200 min-h-screen flex antialiased selection:bg-blue-500 selection:text-white w-full max-w-full overflow-x-hidden"
       x-data="dashboard()" x-init="init()"
       @notify.window="showToast($event.detail.title || $event.detail.type || 'Notification', $event.detail.message || $event.detail.msg || '', $event.detail.type || 'info')">
 
+    {{template "sidebar.html" .}}
+
+    <div class="flex-1 flex flex-col min-w-0 min-h-screen">
     {{template "header.html" .}}
 
     <!-- Main Content -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 pt-6 pb-24 md:pb-6 space-y-6 overflow-x-hidden">
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 pt-6 pb-6 space-y-6 overflow-x-hidden">
         <!-- Auth Modal/Form (Candidate 1: Neo-Brutalist Glassmorphism) -->
         <template x-if="!authenticated">
             <div class="max-w-md mx-auto my-12 bg-card/90 backdrop-blur-2xl border border-border/80 rounded-3xl p-8 shadow-2xl space-y-6 animate-fade-in">
@@ -187,6 +190,7 @@
 
         {{template "tab_about.html" .}}
     </main>
+    </div>
 
     {{template "modals.html" .}}
 
