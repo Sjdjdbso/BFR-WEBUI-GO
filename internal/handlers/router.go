@@ -115,6 +115,10 @@ func RegisterRoutes(mux *http.ServeMux, authMgr *auth.Manager) {
 	mux.HandleFunc("/api/zengobox/config", wrap(HandleZengoboxConfig, true))
 	mux.HandleFunc("/api/zengobox/sysinfo", wrap(HandleZengoboxSysinfo, true))
 	mux.HandleFunc("/api/zengobox/apps", wrap(HandleZengoboxApps, true))
+	mux.HandleFunc("/api/zengobox/start", wrap(HandleZengoboxStart, true))
+	mux.HandleFunc("/api/zengobox/stop", wrap(HandleZengoboxStop, true))
+	mux.HandleFunc("/api/zengobox/restart", wrap(HandleZengoboxRestart, true))
+	mux.HandleFunc("/api/zengobox/logs", wrap(HandleZengoboxLogs, true))
 
 	// Files URLs
 	mux.HandleFunc("/api/files/list", wrap(HandleFilesList, true))
