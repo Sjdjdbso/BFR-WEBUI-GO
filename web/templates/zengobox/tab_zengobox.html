@@ -1,0 +1,175 @@
+{{define "tab_zengobox.html"}}
+                <!-- TAB: ZENGOBOX -->
+                <div x-show="activeTab === 'zengobox'" class="space-y-6" x-init="fetchZengobox()">
+                    <!-- Master Control Panel header -->
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h2 class="text-lg font-extrabold text-white tracking-wide uppercase">ZenGoBox</h2>
+                            <p class="text-xs text-gray-400">Master Control Panel</p>
+                        </div>
+                        <div class="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5">
+                            <template x-if="zbLoading">
+                                <span class="flex items-center gap-2 text-xs font-bold text-gray-400">
+                                    <span class="w-2 h-2 rounded-full bg-[#f97815] animate-ping"></span> Connecting...
+                                </span>
+                            </template>
+                            <template x-if="!zbLoading && zbStatus">
+                                <span class="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider">
+                                    <span class="w-2 h-2 rounded-full"
+                                        :class="zbStatus.running ? 'bg-green-400 shadow-[0_0_8px_rgba(74,222,128,0.9)]' : 'bg-red-400'"></span>
+                                    <span :class="zbStatus.running ? 'text-green-400' : 'text-red-400'"
+                                        x-text="zbStatus.running ? 'Active' : 'Offline'"></span>
+                                    <span class="text-gray-500 font-mono normal-case tracking-normal"
+                                        x-text="zbStatus.mode ? zbStatus.mode.toUpperCase() : ''"></span>
+                                </span>
+                            </template>
+                            <template x-if="!zbLoading && !zbStatus">
+                                <span class="text-xs font-bold text-red-400">Unreachable</span>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Setup notice -->
+                    <template x-if="zbStatus && zbStatus.needs_setup">
+                        <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5">
+                            <div class="flex items-start gap-3">
+                                <span class="text-2xl">📦</span>
+                                <div>
+                                    <p class="text-sm font-extrabold text-amber-300 uppercase tracking-wider">Core not installed</p>
+                                    <p class="text-xs text-gray-400 mt-1">No proxy core binary found yet. The setup wizard to download cores is coming soon.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Status cards -->
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-card border border-border rounded-2xl p-5">
+                            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Status</p>
+                            <p class="text-2xl font-extrabold"
+                                :class="zbStatus && zbStatus.running ? 'text-green-400' : 'text-red-400'"
+                                x-text="zbLoading ? '...' : (zbStatus && zbStatus.running ? 'Running' : 'Stopped')"></p>
+                            <p class="text-[11px] font-mono text-gray-500 mt-1"
+                                x-text="zbStatus && zbStatus.pid ? 'PID ' + zbStatus.pid : 'no process'"></p>
+                        </div>
+                        <div class="bg-card border border-border rounded-2xl p-5">
+                            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Core</p>
+                            <p class="text-2xl font-extrabold text-white capitalize"
+                                x-text="zbLoading ? '...' : (zbStatus && zbStatus.core ? zbStatus.core : '—')"></p>
+                            <p class="text-[11px] font-mono text-gray-500 mt-1"
+                                x-text="zbStatus ? ('v' + (zbStatus.core_version || '?')) : ''"></p>
+                        </div>
+                        <div class="bg-card border border-border rounded-2xl p-5">
+                            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">Routing Mode</p>
+                            <p class="text-2xl font-extrabold text-[#f97815] uppercase"
+                                x-text="zbLoading ? '...' : (zbStatus && zbStatus.effective_mode ? zbStatus.effective_mode : '—')"></p>
+                            <p class="text-[11px] font-mono text-gray-500 mt-1">effective tier</p>
+                        </div>
+                        <div class="bg-card border border-border rounded-2xl p-5">
+                            <p class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">CPU Cores</p>
+                            <p class="text-2xl font-extrabold text-white"
+                                x-text="zbLoading ? '...' : (zbSysinfo ? zbSysinfo.cpu_cores : '—')"></p>
+                            <p class="text-[11px] font-mono text-gray-500 mt-1">device info</p>
+                        </div>
+                    </div>
+
+                    <!-- Config summary -->
+                    <div class="bg-card border border-border rounded-2xl p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">⚙️ Core Configuration</h3>
+                            <button @click="fetchZengobox()" class="text-xs font-bold text-[#f97815] hover:text-white transition-colors">↻ Refresh</button>
+                        </div>
+                        <template x-if="zbConfig">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+                                <div class="bg-white/5 border border-white/10 rounded-xl p-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Proxy Core</p>
+                                    <p class="font-bold text-white capitalize" x-text="zbConfig.Core ? zbConfig.Core.BinName : '—'"></p>
+                                    <p class="text-[11px] font-mono text-gray-500" x-text="zbConfig.Core ? 'variant: ' + (zbConfig.Core.ClashOption || '—') : ''"></p>
+                                </div>
+                                <div class="bg-white/5 border border-white/10 rounded-xl p-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Network</p>
+                                    <p class="font-bold text-white uppercase" x-text="zbConfig.Network ? zbConfig.Network.Mode : '—'"></p>
+                                    <p class="text-[11px] font-mono text-gray-500"
+                                        x-text="zbConfig.Network ? ('tproxy ' + zbConfig.Network.TProxyPort + ' · redir ' + zbConfig.Network.RedirPort) : ''"></p>
+                                </div>
+                                <div class="bg-white/5 border border-white/10 rounded-xl p-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Proxy Mode</p>
+                                    <p class="font-bold text-white capitalize" x-text="zbConfig.Proxy ? zbConfig.Proxy.Mode : '—'"></p>
+                                    <p class="text-[11px] font-mono text-gray-500"
+                                        x-text="zbConfig.Proxy && zbConfig.Proxy.Packages ? zbConfig.Proxy.Packages.length + ' packages' : '0 packages'"></p>
+                                </div>
+                                <div class="bg-white/5 border border-white/10 rounded-xl p-3 col-span-1 sm:col-span-2 lg:col-span-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">Toggles</p>
+                                    <div class="flex flex-wrap gap-2 text-[11px] font-bold" x-show="zbConfig.Network">
+                                        <span class="px-2 py-1 rounded-lg border" :class="zbToggleChip(zbConfig.Network.IPv6)">IPv6</span>
+                                        <span class="px-2 py-1 rounded-lg border" :class="zbToggleChip(zbConfig.Network.QUICBlock)">QUIC Block</span>
+                                        <span class="px-2 py-1 rounded-lg border" :class="zbToggleChip(zbConfig.Network.ClashDNSForward)">DNS Forward</span>
+                                        <span class="px-2 py-1 rounded-lg border" :class="zbToggleChip(zbConfig.Wifi && zbConfig.Wifi.Enabled)">Smart WiFi</span>
+                                        <span class="px-2 py-1 rounded-lg border" :class="zbToggleChip(zbConfig.Schedule && zbConfig.Schedule.Enabled)">Cron</span>
+                                        <span class="px-2 py-1 rounded-lg border" :class="zbToggleChip(zbConfig.Subscription && zbConfig.Subscription.InjectRules)">Rules Injector</span>
+                                        <span class="px-2 py-1 rounded-lg border" :class="zbToggleChip(zbConfig.Geo && zbConfig.Geo.AutoUpdate)">Geo Update</span>
+                                    </div>
+                                </div>
+                                <div class="bg-white/5 border border-white/10 rounded-xl p-3 col-span-1 sm:col-span-2 lg:col-span-3">
+                                    <p class="text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-2">Supervision</p>
+                                    <p class="text-xs font-mono text-gray-400"
+                                        x-text="zbConfig.Process ? ('run as ' + zbConfig.Process.UserGroup + ' · max ' + zbConfig.Process.MaxRestarts + ' restarts / ' + zbConfig.Process.RestartWindow + ' · backoff ' + zbConfig.Process.RestartBackoff) : '—'"></p>
+                                </div>
+                            </div>
+                        </template>
+                        <template x-if="!zbConfig && !zbLoading">
+                            <p class="text-xs text-gray-500">Could not load configuration.</p>
+                        </template>
+                    </div>
+
+                    <!-- Apps -->
+                    <div class="bg-card border border-border rounded-2xl p-5">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400">📱 Installed Apps <span class="text-gray-600" x-text="zbApps.length ? '(' + zbFilteredApps().length + '/' + zbApps.length + ')' : ''"></span></h3>
+                            <div class="flex items-center gap-3">
+                                <label class="flex items-center gap-1.5 text-[11px] text-gray-400 cursor-pointer select-none">
+                                    <input type="checkbox" x-model="zbShowSystemApps" class="accent-[#f97815]"> System apps
+                                </label>
+                                <input x-model="zbAppFilter" type="text" placeholder="Filter apps..."
+                                    class="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white placeholder-gray-600 outline-none focus:border-[#f97815]/60 w-40">
+                            </div>
+                        </div>
+                        <div class="max-h-72 overflow-y-auto space-y-1 pr-1">
+                            <template x-for="app in zbFilteredApps().slice(0, 200)" :key="app.package">
+                                <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-white/[0.03] border border-white/5 hover:border-white/15 transition-colors">
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-bold text-white truncate" x-text="app.label"></p>
+                                        <p class="text-[10px] font-mono text-gray-500 truncate" x-text="app.package"></p>
+                                    </div>
+                                    <span x-show="app.system" class="shrink-0 text-[9px] font-extrabold uppercase tracking-wider text-purple-300 bg-purple-500/10 border border-purple-500/30 px-1.5 py-0.5 rounded">sys</span>
+                                </div>
+                            </template>
+                            <template x-if="!zbLoading && zbFilteredApps().length === 0">
+                                <p class="text-xs text-gray-500 text-center py-6">No apps match the filter.</p>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Coming soon -->
+                    <div class="bg-card border border-dashed border-white/15 rounded-2xl p-5 opacity-80">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">🔜 Coming Soon</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
+                                <p class="text-lg mb-1">⏻</p>
+                                <p class="text-xs font-extrabold text-gray-300 uppercase tracking-wider">Start / Stop</p>
+                                <p class="text-[10px] text-gray-500 mt-1">Daemon control lands in Phase 2</p>
+                            </div>
+                            <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
+                                <p class="text-lg mb-1">🔑</p>
+                                <p class="text-xs font-extrabold text-gray-300 uppercase tracking-wider">Proxy Accounts</p>
+                                <p class="text-[10px] text-gray-500 mt-1">Account manager lands in Phase 3</p>
+                            </div>
+                            <div class="rounded-xl border border-white/10 bg-white/[0.02] p-4 text-center">
+                                <p class="text-lg mb-1">📜</p>
+                                <p class="text-xs font-extrabold text-gray-300 uppercase tracking-wider">Live Logs</p>
+                                <p class="text-[10px] text-gray-500 mt-1">Log streaming lands in Phase 2</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+{{end}}
