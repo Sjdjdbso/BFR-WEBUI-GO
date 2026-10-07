@@ -80,6 +80,11 @@ func main() {
 		}
 	}()
 
+	// ZenGoBox background automation: cron scheduler (geo + subscription
+	// updates), Smart WiFi watcher and core.log rotator. Each worker
+	// checks its own enable flag from zengobox.yaml before doing anything.
+	go zengobox.StartBackground()
+
 	addr := ":" + *port
 	server := &http.Server{
 		Addr:    addr,
