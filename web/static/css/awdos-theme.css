@@ -1,0 +1,284 @@
+/* ============================================================
+   AWDOS Visual System — ported for BFR-WEBUI-GO (Wave 1 reskin)
+   ------------------------------------------------------------
+   Visual-only theme layer. Loaded AFTER style.css so it wins
+   the cascade. No markup, API or JS changes are required:
+   every BFR accent already flows through --neo-accent, and
+   every card through .bg-card / .bg-flat.
+   Palette reference: AWD OS v1.4.41 (glassmorphism cards,
+   primary orange #f97815, soft shadows, pill badges).
+   ============================================================ */
+
+/* ---------- 1. Core tokens ---------- */
+:root {
+  --neo-accent: #f97815;                 /* every blue accent -> AWDOS orange */
+  --neo-bg: #f9fafb;
+  --awd-card-bg: rgba(255, 255, 255, 0.72);
+  --awd-card-border: rgba(0, 0, 0, 0.08);
+  --awd-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --awd-card-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.10);
+  --awd-radius: 24px;
+  --awd-radius-sm: 16px;
+}
+.dark {
+  --neo-accent: #f97815;
+  --neo-bg: #1b1b1e;
+  --neo-card: #232326;
+  --neo-card-sub: #2a2a2e;
+  --neo-text: #ffffff;
+  --neo-muted: #a1a1aa;
+  --neo-border: rgba(255, 255, 255, 0.10);
+  --awd-card-bg: rgba(255, 255, 255, 0.06);
+  --awd-card-border: rgba(255, 255, 255, 0.10);
+  --awd-card-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  --awd-card-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* ---------- 2. Typography ---------- */
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji" !important;
+}
+
+/* Material Symbols (vendored from AWD OS) */
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/static/fonts/MaterialSymbolsOutlined.woff2") format("woff2");
+}
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined" !important;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  display: inline-block;
+  line-height: 1;
+  text-transform: none;
+  letter-spacing: normal;
+  word-wrap: normal;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/static/fonts/JetBrainsMono.woff2") format("woff2");
+}
+
+/* ---------- 3. Ambient glow (AWDOS signature) ---------- */
+body::after {
+  content: "";
+  position: fixed;
+  top: -12%;
+  left: -12%;
+  width: 44%;
+  height: 44%;
+  background: radial-gradient(circle, rgba(249, 120, 21, 0.10), transparent 70%);
+  filter: blur(100px);
+  pointer-events: none;
+  z-index: 0;
+}
+main { position: relative; z-index: 1; }
+
+/* ---------- 4. Glassmorphism cards (replaces neo-brutalism) ---------- */
+.bg-card {
+  background-color: var(--awd-card-bg) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border: 1px solid var(--awd-card-border) !important;
+  border-radius: var(--awd-radius) !important;
+  box-shadow: var(--awd-card-shadow) !important;
+}
+.bg-flat {
+  background-color: rgba(128, 128, 128, 0.08) !important;
+  border: 1px solid var(--awd-card-border) !important;
+  box-shadow: none !important;
+  border-radius: var(--awd-radius-sm) !important;
+}
+.bg-black {
+  background-color: rgba(128, 128, 128, 0.08) !important;
+  border: 1px solid var(--awd-card-border) !important;
+  border-radius: var(--awd-radius-sm) !important;
+  box-shadow: none !important;
+}
+
+/* ---------- 5. Buttons: soft instead of brutalist ---------- */
+button,
+.btn {
+  border-radius: 12px !important;
+  border: 1px solid var(--awd-card-border) !important;
+  box-shadow: var(--awd-card-shadow) !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+button:hover,
+.btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: var(--awd-card-shadow-lg) !important;
+}
+button:active,
+.btn:active {
+  transform: translateY(0) !important;
+  box-shadow: var(--awd-card-shadow) !important;
+}
+/* Primary (orange) buttons keep white text */
+button[class*="bg-blue"],
+.btn[class*="bg-blue"] {
+  background-color: var(--neo-accent) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+button[class*="bg-red"],
+button[class*="bg-green"],
+button[class*="bg-amber"] {
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
+/* Nav / header icon buttons stay clean */
+nav button,
+header button {
+  box-shadow: none !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+nav button:hover,
+header button:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+header button.theme-toggle {
+  border-radius: 12px !important;
+  border: 1px solid var(--awd-card-border) !important;
+  box-shadow: none !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+}
+header button.theme-toggle:hover {
+  transform: none !important;
+}
+
+/* ---------- 6. Status badges: AWDOS pill style ---------- */
+.badge-active,
+.badge-inactive,
+.badge-stopped,
+.badge-disabled,
+.badge-neutral,
+.badge-info,
+.badge-warning {
+  border-radius: 20px !important;
+  font-size: 0.7rem !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  padding: 4px 10px !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  line-height: 1 !important;
+}
+
+/* ---------- 7. Header: glass bar ---------- */
+header {
+  background-color: var(--awd-card-bg) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
+  border-bottom: 1px solid var(--awd-card-border) !important;
+}
+header div[class*="bg-blue-600"] {
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(249, 120, 21, 0.35) !important;
+  border-radius: 12px !important;
+}
+
+/* ---------- 8. Forms ---------- */
+input[type="text"],
+input[type="password"],
+textarea,
+select {
+  border-radius: 12px !important;
+  border: 1px solid var(--awd-card-border) !important;
+  box-shadow: none !important;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+  border-color: var(--neo-accent) !important;
+  box-shadow: 0 0 0 3px rgba(249, 120, 21, 0.18) !important;
+}
+
+/* ---------- 9. Tables ---------- */
+th {
+  border-bottom: 1px solid var(--awd-card-border) !important;
+  border-radius: 0 !important;
+}
+td {
+  border-bottom: 1px solid var(--awd-card-border) !important;
+}
+table {
+  border-radius: var(--awd-radius-sm);
+  overflow: hidden;
+}
+
+/* ---------- 10. Terminal / code / modals ---------- */
+#terminal-container {
+  background-color: var(--awd-card-bg) !important;
+  border: 1px solid var(--awd-card-border) !important;
+  border-radius: var(--awd-radius-sm) !important;
+  box-shadow: var(--awd-card-shadow) !important;
+}
+pre {
+  border: 1px solid var(--awd-card-border) !important;
+  border-radius: var(--awd-radius-sm) !important;
+}
+.fixed div.bg-card {
+  border-radius: 20px !important;
+  box-shadow: var(--awd-card-shadow-lg) !important;
+  transform: none !important;
+}
+
+/* ---------- 11. Tailwind blue/opacity utilities -> orange tints ----------
+   (compiled utilities can't follow --neo-accent, so remap explicitly) */
+.bg-blue-500\/5   { background-color: rgba(249, 120, 21, 0.05) !important; }
+.bg-blue-600\/8   { background-color: rgba(249, 120, 21, 0.08) !important; }
+.bg-blue-500\/10  { background-color: rgba(249, 120, 21, 0.10) !important; }
+.bg-blue-600\/10  { background-color: rgba(249, 120, 21, 0.10) !important; }
+.bg-blue-500\/15  { background-color: rgba(249, 120, 21, 0.15) !important; }
+.bg-blue-600\/20  { background-color: rgba(249, 120, 21, 0.18) !important; }
+.bg-blue-500\/20  { background-color: rgba(249, 120, 21, 0.20) !important; }
+.bg-blue-600\/30  { background-color: rgba(249, 120, 21, 0.28) !important; }
+.bg-blue-600\/50  { background-color: rgba(249, 120, 21, 0.50) !important; }
+.border-blue-500\/20 { border-color: rgba(249, 120, 21, 0.20) !important; }
+.border-blue-500\/25 { border-color: rgba(249, 120, 21, 0.25) !important; }
+.border-blue-500\/30 { border-color: rgba(249, 120, 21, 0.30) !important; }
+.border-blue-500\/40 { border-color: rgba(249, 120, 21, 0.40) !important; }
+.border-blue-500\/50 { border-color: rgba(249, 120, 21, 0.50) !important; }
+.border-blue-500\/60 { border-color: rgba(249, 120, 21, 0.60) !important; }
+.border-blue-500\/70 { border-color: rgba(249, 120, 21, 0.70) !important; }
+
+/* ---------- 12. Scrollbars: slim AWDOS style ---------- */
+::-webkit-scrollbar { width: 10px !important; height: 10px !important; }
+::-webkit-scrollbar-track { background: transparent !important; border: none !important; }
+::-webkit-scrollbar-thumb {
+  background-color: var(--awd-card-border) !important;
+  border-radius: 10px !important;
+  border: 3px solid transparent !important;
+  background-clip: padding-box !important;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--neo-accent) !important; }
+* { scrollbar-width: thin !important; scrollbar-color: var(--awd-card-border) transparent !important; }
+
+/* ---------- 13. Progress bars: orange ---------- */
+.bg-blue-500.h-2,
+div[class*="bg-blue-500"].h-2 {
+  background-color: var(--neo-accent) !important;
+}
